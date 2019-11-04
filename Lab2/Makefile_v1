@@ -1,0 +1,28 @@
+#C compiler
+CCOMP = gcc
+
+#C linker
+LOADER = gcc
+
+# optymalization options
+OPT = -O3
+
+# localization of header files
+#INC = -I./folder_name
+
+# libraries
+#LIB = -L../folder name -lrt
+
+# dependancies and commands
+lab2: lab2.o tmeas.o
+	$(LOADER) $(OPT) lab2.o tmeas.o -o lab2 $(LIB)
+
+# how to obtain a file lab2.o
+lab2.o: lab2.c
+	$(CCOMP) -c $(OPT) lab2.c
+
+tmeas.o: tmeas.c tmeas.h
+	$(CCOMP) -c $(OPT) tmeas.c
+
+clean:
+	rm -f *.o
