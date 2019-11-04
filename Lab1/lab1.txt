@@ -1,0 +1,11 @@
+joao seixas
+total 36
+drwxr-xr-x 2 jseixas jseixas 4096 set 18 12:27 Desktop
+drwxr-xr-x 3 jseixas jseixas 4096 set  2 20:15 Documents
+drwxr-xr-x 3 jseixas jseixas 4096 set 12 11:48 Downloads
+drwxr-xr-x 2 jseixas jseixas 4096 out  7 08:54 lab1
+drwxr-xr-x 2 jseixas jseixas 4096 ago 26 16:45 Music
+drwxr-xr-x 2 jseixas jseixas 4096 set  9 16:33 Pictures
+drwxr-xr-x 2 jseixas jseixas 4096 ago 26 16:45 Public
+drwxr-xr-x 2 jseixas jseixas 4096 ago 26 16:45 Templates
+drwxr-xr-x 2 jseixas jseixas 4096 ago 26 16:45 Videos
