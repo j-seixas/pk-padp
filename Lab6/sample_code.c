@@ -8,7 +8,7 @@ int main()
 	#pragma omp parallel num_threads(4) default(none) shared(n)
 	{
 		//1. enable nowait option and try to notice difference
-		#pragma omp sections //nowait
+		#pragma omp sections nowait
 		{
 			#pragma omp section
 			{
@@ -24,7 +24,7 @@ int main()
 		}
 		
 		//2. Enable barrier option with and without nowait from step 1 - what can you notice? 
-		//#pragma omp barrier
+		#pragma omp barrier
 
 		#pragma omp for schedule(dynamic) private(i)
 		for (i = 0; i < n; i++) {
