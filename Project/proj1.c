@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <math.h> 
+#include <time.h>
 #include "mpi.h" 
 
 #define MAX_PASSENGERS 10
@@ -21,6 +21,8 @@ typedef struct {
     int initFloor[MAX_PASSENGERS];
     int objectiveFloor[MAX_PASSENGERS];
     enum PassengerState pState[MAX_PASSENGERS];
+    int iter;
+    int finished;
 } Passengers;
 
 Passengers createPassengers(int size);
@@ -29,18 +31,25 @@ bool sameDirection(enum ElevatorState dir, int inicial, int final);
 bool checkSomeoneLeaves(Elevator* elevator, Passengers* passengers);
 void checkSomeoneEnters(Elevator* elevator, Passengers* passengers);
 bool checkRequests(Elevator* elevator, Passengers* passengers);
-int moveElevator(Elevator* elevator, int size);
+int moveElevator(Elevator* elevator, Passengers* passengers, int size);
 bool allFinished(Passengers* passengers);
 
 
 Passengers createPassengers(int size) {
     Passengers pass;
+    pass.iter = 0;
+    pass.finished = 0;
+    time_t t;  
+    /* Intializes random number generator */
+    srand((unsigned) time(&t));
+
     for(int i = 0; i < MAX_PASSENGERS; i++) {
         pass.initFloor[i] = rand() % size;
         do {
             pass.objectiveFloor[i] = rand() % size;
         } while(pass.initFloor[i] == pass.objectiveFloor[i]);
-        pass.pState[WAITING];
+        pass.pState[i] = WAITING;
+        printf("--> Passenger #%d created - init: %d, obj: %d\n", i, pass.initFloor[i], pass.objectiveFloor[i]);
     }
 
     return pass;
@@ -60,7 +69,7 @@ Elevator createElevator() {
     return el;
 }
 
-bool sameDirection(enum ElevatorState dir, int inicial, int final) {
+bool sameDirection(enum ElevatorState dir, int final, int inicial) {
     if(dir == UP)
         return final - inicial > 0;
     else if(dir == DOWN)
@@ -79,7 +88,7 @@ bool checkSomeoneLeaves(Elevator* elevator, Passengers* passengers) {
             if((*passengers).objectiveFloor[tmp] == (*elevator).floor && (*passengers).pState[tmp] == INSIDE) {
                 (*passengers).pState[tmp] = FINISHED;
                 (*elevator).passengerIDs[i] = -1;
-                printf("Passenger #%d left elevator on floor %d with destination %d\n", tmp, (*elevator).floor, (*passengers).objectiveFloor[tmp]);
+                printf("iter: %d, Passenger #%d left elevator on floor %d with destination %d\n", (*passengers).iter, tmp, (*elevator).floor, (*passengers).objectiveFloor[tmp]);
                 left = true;
                 counter++;
             }
@@ -89,13 +98,14 @@ bool checkSomeoneLeaves(Elevator* elevator, Passengers* passengers) {
 
     if(counter == MAX_PASSENGERS)
         (*elevator).eState = IDLE;
+    
+    return left;
 }
 
 void checkSomeoneEnters(Elevator* elevator, Passengers* passengers) {
     int j = 0;
     for(int i = 0; i < MAX_PASSENGERS; i++) {
         if((*passengers).initFloor[i] == (*elevator).floor && ((*passengers).pState[i] == WAITING || (*passengers).pState[i] == REQUESTED)) {
-
             if((*elevator).eState != IDLE && !sameDirection((*elevator).eState, (*passengers).objectiveFloor[i], (*passengers).initFloor[i]))
                 continue;
             
@@ -106,7 +116,7 @@ void checkSomeoneEnters(Elevator* elevator, Passengers* passengers) {
                 if((*elevator).passengerIDs[j] == -1) {
                     (*elevator).passengerIDs[j] = i;
                     (*passengers).pState[i] = INSIDE;
-                    printf("Passenger #%d entered elevator on floor %d with destination %d\n", i, (*elevator).floor, (*passengers).objectiveFloor[i]);
+                    printf("iter: %d, Passenger #%d entered elevator on floor %d with destination %d\n", (*passengers).iter, i, (*elevator).floor, (*passengers).objectiveFloor[i]);
                     break;
                 }
             }
@@ -127,7 +137,7 @@ bool checkRequests(Elevator* elevator, Passengers* passengers) {
     }
 
     if(found) {
-        printf("Found request from passenger on floor %d\n", (*elevator).floorReq);
+        printf("iter: %d, Found request from passenger on floor %d\n", (*passengers).iter, (*elevator).floorReq);
         return found;
     }
     
@@ -136,7 +146,7 @@ bool checkRequests(Elevator* elevator, Passengers* passengers) {
             found = true;
             (*elevator).requested = true;
             (*elevator).floorReq = (*passengers).initFloor[i];
-            printf("Found request from passenger on floor %d\n", (*elevator).floorReq);
+            printf("iter: %d, Found request from passenger on floor %d\n", (*passengers).iter, (*elevator).floorReq);
             return found;
         }
     }
@@ -144,8 +154,8 @@ bool checkRequests(Elevator* elevator, Passengers* passengers) {
     return false;
 }
 
-int moveElevator(Elevator* elevator, int size) {
-    int nextFloor;
+int moveElevator(Elevator* elevator, Passengers* passengers, int size) {
+    int nextFloor = 0;
     if((*elevator).eState == UP) {
         if((*elevator).floor == size - 1) {
             nextFloor = (*elevator).floor - 1;
@@ -162,7 +172,7 @@ int moveElevator(Elevator* elevator, int size) {
     }
 
     if((*elevator).eState != IDLE) {
-        printf("-> Elevator going from %d to %d\n", (*elevator).floor, nextFloor);
+        printf("iter: %d, --> Elevator going from %d to %d\n", (*passengers).iter, (*elevator).floor, nextFloor);
         (*elevator).floor = nextFloor;
     }
 
@@ -211,8 +221,8 @@ int main(int argc, char **argv) {
 	MPI_Type_commit(&new_type_elevator);
 
 
-    MPI_Datatype new_type_passengers, typePassengers[3] = {MPI_INT, MPI_INT, MPI_INT};
-	int block_lengths_array_passengers[3] = {MAX_PASSENGERS, MAX_PASSENGERS, MAX_PASSENGERS};
+    MPI_Datatype new_type_passengers, typePassengers[5] = {MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT};
+	int block_lengths_array_passengers[5] = {MAX_PASSENGERS, MAX_PASSENGERS, MAX_PASSENGERS, 1, 1};
 
     MPI_Aint dispPassengers[5], basePassengers, addrPassengers;
 	Passengers passengers;
@@ -223,8 +233,12 @@ int main(int argc, char **argv) {
 	dispPassengers[1] = addrPassengers - basePassengers;
     MPI_Get_address(&(passengers.pState), &addrPassengers);
 	dispPassengers[2] = addrPassengers - basePassengers;
+    MPI_Get_address(&(passengers.iter), &addrPassengers);
+	dispPassengers[3] = addrPassengers - basePassengers;
+    MPI_Get_address(&(passengers.finished), &addrPassengers);
+	dispPassengers[4] = addrPassengers - basePassengers;
 	
-	MPI_Type_create_struct(3, block_lengths_array_passengers, dispPassengers, typePassengers, &new_type_passengers);
+	MPI_Type_create_struct(5, block_lengths_array_passengers, dispPassengers, typePassengers, &new_type_passengers);
 	MPI_Type_commit(&new_type_passengers);
 
 
@@ -243,11 +257,12 @@ int main(int argc, char **argv) {
 
             if(elevator.eState == IDLE) {
                 if(checkRequests(&elevator, &passengers)) {
+                    printf("iter: %d, --> Elevator went to request on %d\n", passengers.iter, elevator.floorReq);
                     MPI_Send(&elevator, 1, new_type_elevator, elevator.floorReq, 0, MPI_COMM_WORLD);
                     MPI_Send(&passengers, 1, new_type_passengers, elevator.floorReq, 0, MPI_COMM_WORLD);
                 }
             } else {
-                nextFloor = moveElevator(&elevator, size);
+                nextFloor = moveElevator(&elevator, &passengers, size);
                 MPI_Send(&elevator, 1, new_type_elevator, nextFloor, 0, MPI_COMM_WORLD);
                 MPI_Send(&passengers, 1, new_type_passengers, nextFloor, 0, MPI_COMM_WORLD);
 
@@ -257,40 +272,70 @@ int main(int argc, char **argv) {
 
             MPI_Recv(&elevator, 1, new_type_elevator, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &statusElevator);
             MPI_Recv(&passengers, 1, new_type_passengers, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &statusPassengers);
+            passengers.iter++;
 
-            if(rank == elevator.floor && elevator.eState != IDLE) {
-                left = checkSomeoneLeaves(&elevator, &passengers);
-
-                if(left) {
-                    left = false;
-                    checkSomeoneEnters(&elevator, &passengers);
+            if(passengers.finished == 1) {
+                if(rank != 0 && rank < size - 1) {
+                    MPI_Send(&elevator, 1, new_type_elevator, rank + rank - statusElevator.MPI_SOURCE, 0, MPI_COMM_WORLD);
+                    MPI_Send(&passengers, 1, new_type_passengers, rank + rank - statusPassengers.MPI_SOURCE, 0, MPI_COMM_WORLD);
                 }
-            }
-            
-            if(elevator.eState == IDLE) {
-                if(elevator.requested && elevator.floorReq == rank) {
-                    elevator.floor = rank;
-                    elevator.requested = false;
-                    checkSomeoneEnters(&elevator, &passengers);
-                } else {
-                    if(checkRequests(&elevator, &passengers)) {
-                        MPI_Send(&elevator, 1, new_type_elevator, elevator.floorReq, 0, MPI_COMM_WORLD);
-                        MPI_Send(&passengers, 1, new_type_passengers, elevator.floorReq, 0, MPI_COMM_WORLD);
-                        continue;
+
+            } else {
+
+                if(rank == elevator.floor && elevator.eState != IDLE) {
+                    left = checkSomeoneLeaves(&elevator, &passengers);
+
+                    if(left) {
+                        left = false;
+                        checkSomeoneEnters(&elevator, &passengers);
                     }
                 }
-            } 
-            
-            if(elevator.eState != IDLE) {
-                nextFloor = moveElevator(&elevator, size);
-                MPI_Send(&elevator, 1, new_type_elevator, nextFloor, 0, MPI_COMM_WORLD);
-                MPI_Send(&passengers, 1, new_type_passengers, nextFloor, 0, MPI_COMM_WORLD);
+                
+                if(elevator.eState == IDLE) {
+                    if(elevator.requested && elevator.floorReq == rank) {
+                        elevator.floor = rank;
+                        elevator.requested = false;
+                        checkSomeoneEnters(&elevator, &passengers);
+                    } else {
+                        if(checkRequests(&elevator, &passengers)) {
+                            printf("iter: %d, --> Elevator went to request on %d\n", passengers.iter, elevator.floorReq);
+                            MPI_Send(&elevator, 1, new_type_elevator, elevator.floorReq, 0, MPI_COMM_WORLD);
+                            MPI_Send(&passengers, 1, new_type_passengers, elevator.floorReq, 0, MPI_COMM_WORLD);
+                            continue;
+                        }
+                    }
+                } 
+                
+                if(elevator.eState != IDLE) {
+                    nextFloor = moveElevator(&elevator, &passengers, size);
+                    MPI_Send(&elevator, 1, new_type_elevator, nextFloor, 0, MPI_COMM_WORLD);
+                    MPI_Send(&passengers, 1, new_type_passengers, nextFloor, 0, MPI_COMM_WORLD);
+                } 
+
+                if(allFinished(&passengers)){
+                    passengers.finished = 1;
+                    if(rank == 0) {
+                        MPI_Send(&elevator, 1, new_type_elevator, rank + 1, 0, MPI_COMM_WORLD);
+                        MPI_Send(&passengers, 1, new_type_passengers, rank + 1, 0, MPI_COMM_WORLD);
+
+                    } else if(rank >= size - 1) {
+                        MPI_Send(&elevator, 1, new_type_elevator, rank - 1, 0, MPI_COMM_WORLD);
+                        MPI_Send(&passengers, 1, new_type_passengers, rank - 1, 0, MPI_COMM_WORLD);
+
+                    } else {
+                        MPI_Send(&elevator, 1, new_type_elevator, rank + 1, 0, MPI_COMM_WORLD);
+                        MPI_Send(&passengers, 1, new_type_passengers, rank + 1, 0, MPI_COMM_WORLD);
+                        MPI_Send(&elevator, 1, new_type_elevator, rank - 1, 0, MPI_COMM_WORLD);
+                        MPI_Send(&passengers, 1, new_type_passengers, rank - 1, 0, MPI_COMM_WORLD);
+                    }
+
+                }
             }
 
         }
 
 
-    } while (!allFinished(&passengers));
+    } while (passengers.finished == 0);
 
 	// MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Finalize();
