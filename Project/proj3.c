@@ -13,9 +13,9 @@ typedef struct {
 
 
 int main(int argc, char **argv) {
-	int rank, size, r;
-	int src, dst, tag, i;	
-    int value, stopValue = 20;
+	int rank, size;
+	int src;	
+    int value;
 
 	MPI_Status status;
 	MPI_Datatype new_type, type[5] = {MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_DOUBLE};
@@ -23,10 +23,10 @@ int main(int argc, char **argv) {
 
 	MPI_Aint disp[5], base, addr;
 	Function func;
-
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
+    double start;
 
 	if(rank == 0) 
 		printf("Creating Function data type for calculations\n");
@@ -48,6 +48,7 @@ int main(int argc, char **argv) {
 
     if(rank != 0) {
         MPI_Recv(&func, 1, new_type, rank - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &status); 
+        start = MPI_Wtime();
         func.n += 1;
         
         if (func.x == 0) {
@@ -70,7 +71,7 @@ int main(int argc, char **argv) {
         printf("Enter a integer number:\n");
         scanf("%d", &value);
         fflush(stdout);
-
+        start = MPI_Wtime();
         func.n = 0;
         func.result = 1;
 		func.upperPart = 1;
@@ -89,7 +90,8 @@ int main(int argc, char **argv) {
 
         }
     }
-
+    double end = MPI_Wtime();
+    printf("Time rank#%d: %lf\n", rank, end - start);
 	// MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Finalize();
 	return 0;

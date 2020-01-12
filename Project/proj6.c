@@ -31,7 +31,7 @@ int main() {
         omp_set_lock(&lock);
         if(nums[i] != 0) {
             for(j = pow(nums[i], 2) - 2; j < n - 1; j += nums[i]){
-                printf("#%d -> nums[i]:%d j:%d -> %d\n", omp_get_thread_num(), nums[i], j, nums[j]);
+                //printf("#%d -> nums[i]:%d j:%d -> %d\n", omp_get_thread_num(), nums[i], j, nums[j]);
                 if(nums[j] != 0) {
                     nums[j] = 0;
                 }

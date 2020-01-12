@@ -14,8 +14,7 @@ void* my_pthread_function(void *thr_data) {
 	int id = (int) thr_data;
     int iter = ceil((double) n / NUM_THR);
 
-    for(int i = id * iter + 1; i < n + 1 && i < id * iter + iter + 1; i += 1){    
-        printf("%d on %d\n", i, id);    
+    for(int i = id * iter + 1; i < n + 1 && i < id * iter + iter + 1; i += 1){     
         pthread_mutex_lock(&mutex);
         sum += 1.0 / i;
         pthread_mutex_unlock(&mutex);

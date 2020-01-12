@@ -5,6 +5,7 @@
 #define NUM_THR 4
 #define N 3
 double det(double A[N][N], int n);
+omp_lock_t lock;
 
 // Function to calculate the determinant of a matrix
 double det(double A[N][N], int n) {
@@ -62,7 +63,6 @@ void print_matrix(double matrix[N][N]){
 */
 int main() {
     omp_set_num_threads(NUM_THR);
-    omp_lock_t lock;
     
     // Example matrix with a(NxN) and b(n)
     double M[N][N + 1] = {{2, 3.1, 1, 4},

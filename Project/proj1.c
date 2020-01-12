@@ -5,6 +5,18 @@
 
 #define MAX_PASSENGERS 10
 
+/*
+    This is my implementation of the Elevator (Lift):
+        - The threads are the floors;
+        - The passengers are randomized into a certain floor and with a random final floor. They have a state of WAITING for elevator, 
+        REQUESTED if they requested the elevator, INSIDE if they are inside the elevator and FINISHED if they arrived at destination. 
+        The passengers are a struct that is sent between threads;
+        - The elevator is a struct also sent between threads, that has the passengers ids that are inside, the current floor, the state
+        (if IDLE, going UP or going DOWN), and if it was requested while it was IDLE;
+        - There are  some functions with description explaining the objective of the function
+*/
+
+
 enum ElevatorState {IDLE, UP, DOWN};
 enum PassengerState {WAITING, REQUESTED, INSIDE, FINISHED};
 
@@ -34,7 +46,10 @@ bool checkRequests(Elevator* elevator, Passengers* passengers);
 int moveElevator(Elevator* elevator, Passengers* passengers, int size);
 bool allFinished(Passengers* passengers);
 
-
+/*
+    Creates the passengers with random starting floor and random finishing floor (can't have the same
+    finishing and start floor)
+*/
 Passengers createPassengers(int size) {
     Passengers pass;
     pass.iter = 0;
@@ -55,6 +70,9 @@ Passengers createPassengers(int size) {
     return pass;
 }
 
+/*
+    Creates elevator
+*/
 Elevator createElevator() {
     Elevator el;
     el.floor = 0;
@@ -69,6 +87,9 @@ Elevator createElevator() {
     return el;
 }
 
+/*
+    Function to check if the person's objective floor is the same direction the elevator is going
+*/
 bool sameDirection(enum ElevatorState dir, int final, int inicial) {
     if(dir == UP)
         return final - inicial > 0;
@@ -79,6 +100,9 @@ bool sameDirection(enum ElevatorState dir, int final, int inicial) {
 
 }
 
+/*
+    Function to check if any passenger leaves on the current floor and to make him leave if true
+*/
 bool checkSomeoneLeaves(Elevator* elevator, Passengers* passengers) {
     bool left = false;
     int tmp, counter = 0;
@@ -102,6 +126,9 @@ bool checkSomeoneLeaves(Elevator* elevator, Passengers* passengers) {
     return left;
 }
 
+/*
+    Function to check if any passenger enters on the current floor and make him enter if true
+*/
 void checkSomeoneEnters(Elevator* elevator, Passengers* passengers) {
     int j = 0;
     for(int i = 0; i < MAX_PASSENGERS; i++) {
@@ -124,6 +151,9 @@ void checkSomeoneEnters(Elevator* elevator, Passengers* passengers) {
     }
 }
 
+/*
+    Function to check next request or to some waiting person make a request
+*/
 bool checkRequests(Elevator* elevator, Passengers* passengers) {
     bool found = false;
 
@@ -154,6 +184,9 @@ bool checkRequests(Elevator* elevator, Passengers* passengers) {
     return false;
 }
 
+/*
+    Function to get next floor for the elevator
+*/
 int moveElevator(Elevator* elevator, Passengers* passengers, int size) {
     int nextFloor = 0;
     if((*elevator).eState == UP) {
@@ -179,6 +212,9 @@ int moveElevator(Elevator* elevator, Passengers* passengers, int size) {
     return nextFloor;
 }
 
+/*
+    Function to check if every passenger is already on current final destination
+*/
 bool allFinished(Passengers* passengers) {
     for(int i = 0; i < MAX_PASSENGERS; i++) {
         if((*passengers).pState[i] != FINISHED)
